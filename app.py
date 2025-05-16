@@ -1,39 +1,37 @@
 from flask import Flask, request, jsonify
-from bs4 import BeautifulSoup
 import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return 'API StatusInvest funcionando!'
-
-@app.route('/dados')
-def dados_acao():
+@app.route('/dados', methods=['GET'])
+def get_dados():
     ticker = request.args.get('ticker')
     if not ticker:
-        return jsonify({'erro': 'Ticker não informado'}), 400
-
-    url = f"https://statusinvest.com.br/acoes/{ticker.lower()}"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(url, headers=headers)
+        return jsonify({'error': 'Ticker não informado'}), 400
+    
+    url = f'https://statusinvest.com.br/acao/{ticker}'
+    response = requests.get(url)
+    if response.status_code != 200:
+        return jsonify({'error': 'Erro ao acessar StatusInvest'}), 500
+    
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    def encontrar_valor_por_label(label):
-        try:
-            elemento = soup.find("h3", string=label)
-            if elemento:
-                valor = elemento.find_next("strong")
-                return valor.text.strip()
-            return "N/A"
-        except:
-            return "N/A"
+    # Exemplo para pegar P/L
+    pl = soup.find('div', text='P/L')
+    pl_value = pl.find_next_sibling('div').text if pl else 'N/A'
+    
+    dividend_yield = soup.find('div', text='Dividend Yield')
+    dividend_yield_value = dividend_yield.find_next_sibling('div').text if dividend_yield else 'N/A'
+    
+    roe = soup.find('div', text='ROE')
+    roe_value = roe.find_next_sibling('div').text if roe else 'N/A'
 
-    resultado = {
-        "ticker": ticker.upper(),
-        "pl": encontrar_valor_por_label("P/L"),
-        "dividend_yield": encontrar_valor_por_label("Dividend yield"),
-        "roe": encontrar_valor_por_label("ROE")
-    }
+    return jsonify({
+        'P/L': pl_value,
+        'Dividend Yield': dividend_yield_value,
+        'ROE': roe_value
+    })
 
-    return jsonify(resultado)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
