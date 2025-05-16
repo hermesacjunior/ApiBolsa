@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 import requests
 from bs4 import BeautifulSoup
 
@@ -10,31 +10,32 @@ def home():
 
 @app.route('/dados/<ticker>')
 def dados(ticker):
-    url = f'https://statusinvest.com.br/acao/{ticker}'
-    response = requests.get(url)
+    url = f'https://statusinvest.com.br/acao/{ticker.lower()}'
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
+
+    response = requests.get(url, headers=headers)
     if response.status_code != 200:
         return jsonify({'error': 'Erro ao acessar StatusInvest'}), 500
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # Buscar P/L
-    pl = soup.find('div', text='P/L')
-    pl_value = pl.find_next_sibling('div').text if pl else 'N/A'
+    def buscar_valor(texto):
+        div = soup.find('h3', string=texto)
+        if div:
+            valor = div.find_next('strong')
+            return valor.text.strip() if valor else 'N/A'
+        return 'N/A'
 
-    # Buscar Dividend Yield
-    dividend_yield = soup.find('div', text='Dividend Yield')
-    dividend_yield_value = dividend_yield.find_next_sibling('div').text if dividend_yield else 'N/A'
-
-    # Buscar ROE
-    roe = soup.find('div', text='ROE')
-    roe_value = roe.find_next_sibling('div').text if roe else 'N/A'
-
-    return jsonify({
+    resultado = {
         'ticker': ticker.upper(),
-        'P/L': pl_value,
-        'Dividend Yield': dividend_yield_value,
-        'ROE': roe_value
-    })
+        'P/L': buscar_valor('P/L'),
+        'Dividend Yield': buscar_valor('Dividend Yield'),
+        'ROE': buscar_valor('ROE')
+    }
+
+    return jsonify(resultado)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
