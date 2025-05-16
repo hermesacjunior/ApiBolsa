@@ -9,33 +9,43 @@ def home():
     return "API ApiBolsa está no ar!"
 
 @app.route('/dados/<ticker>')
-def dados(ticker):
-    url = f'https://statusinvest.com.br/acao/{ticker.lower()}'
+def dados_acao(ticker):
+    url = f'https://statusinvest.com.br/acoes/{ticker}'
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
     }
 
-    response = requests.get(url, headers=headers)
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+    except Exception as e:
+        return jsonify({'error': 'Falha na requisição', 'details': str(e)}), 500
+
     if response.status_code != 200:
         return jsonify({'error': 'Erro ao acessar StatusInvest'}), 500
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    def buscar_valor(texto):
-        div = soup.find('h3', string=texto)
-        if div:
-            valor = div.find_next('strong')
-            return valor.text.strip() if valor else 'N/A'
-        return 'N/A'
+    try:
+        pl = soup.find('h3', string='P/L').find_next('strong').text.strip()
+    except:
+        pl = 'N/A'
+    
+    try:
+        dy = soup.find('h3', string='Dividend Yield').find_next('strong').text.strip()
+    except:
+        dy = 'N/A'
 
-    resultado = {
+    try:
+        roe = soup.find('h3', string='ROE').find_next('strong').text.strip()
+    except:
+        roe = 'N/A'
+
+    return jsonify({
         'ticker': ticker.upper(),
-        'P/L': buscar_valor('P/L'),
-        'Dividend Yield': buscar_valor('Dividend Yield'),
-        'ROE': buscar_valor('ROE')
-    }
-
-    return jsonify(resultado)
+        'P/L': pl,
+        'Dividend Yield': dy,
+        'ROE': roe
+    })
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
