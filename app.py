@@ -4,11 +4,16 @@ from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
-@app.route('/dados', methods=['GET'])
-def get_dados():
-    ticker = request.args.get('ticker')
-    if not ticker:
-        return jsonify({'error': 'Ticker não informado'}), 400
+pp = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "API ApiBolsa está no ar!"
+
+# Suas outras rotas aqui...
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=10000)
     
     url = f'https://statusinvest.com.br/acao/{ticker}'
     response = requests.get(url)
